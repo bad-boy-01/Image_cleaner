@@ -17,7 +17,7 @@ Usage
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -41,9 +41,21 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # I/O
     # ------------------------------------------------------------------ #
-    input_zip: Path = Field(
-        default=Path("chapter.zip"),
-        description="Path to the input ZIP containing image pages.",
+    input_zip: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Path to the input ZIP archive. "
+            "Mutually exclusive with input_folder. "
+            "One of input_zip or input_folder must be provided."
+        ),
+    )
+    input_folder: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Path to a folder containing image files directly. "
+            "Use this when Kaggle has already unzipped your dataset. "
+            "Mutually exclusive with input_zip."
+        ),
     )
     output_zip: Path = Field(
         default=Path("cleaned_chapter.zip"),
@@ -195,7 +207,13 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Validators
     # ------------------------------------------------------------------ #
-    @field_validator("input_zip", "output_zip", "work_dir", "manifest_path", "debug_dir", mode="before")
+    @field_validator(
+        "input_zip", "input_folder", "output_zip",
+        "work_dir", "manifest_path", "debug_dir",
+        mode="before",
+    )
     @classmethod
-    def _coerce_path(cls, v: object) -> Path:
+    def _coerce_path(cls, v: object) -> Optional[Path]:
+        if v is None:
+            return None
         return Path(str(v))

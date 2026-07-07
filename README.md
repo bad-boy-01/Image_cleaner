@@ -92,66 +92,74 @@ image_cleaner/
 pip install -r requirements.txt
 ```
 
-### 2. Place your input ZIP
+### 2A. Run with a folder of images (recommended for Kaggle)
+
+If your images are already in a folder (Kaggle unzips datasets automatically):
+
+```bash
+python app.py --input /path/to/image/folder
+```
+
+`--input` auto-detects: **directories → folder mode**, **`.zip` files → ZIP mode**.
+
+### 2B. Run with a ZIP archive (local use)
 
 Drop your chapter ZIP into the `input/` folder:
 
 ```
 input/
-└── chapter1.zip
+└── chapter1.zip    ← images at the root of the ZIP
 ```
 
-The ZIP should contain image files at its root or in a single subfolder:
-
-```
-chapter1.zip
-├── 001.png
-├── 002.png
-└── 003.jpg
+```bash
+python app.py --input input/chapter1.zip
 ```
 
-### 3. Run (local, no GPU — mock backend)
+### 3. Mock backend (no GPU, for testing)
 
 ```bash
 python app.py --input input/chapter1.zip --backend mock
 ```
 
-### 4. Run (local or Kaggle, GPU — LaMa backend)
+### 4. Full GPU run with debug output
 
 ```bash
-python app.py --input input/chapter1.zip --backend lama
+python app.py --input input/chapter1.zip --backend lama --debug
 ```
 
-Output is written to `cleaned_chapter.zip` by default.
-
-### 5. Override any setting
-
-```bash
-python app.py \
-  --input  input/chapter1.zip \
-  --output output/chapter1_cleaned.zip \
-  --backend lama \
-  --debug
-```
-
-Or set values in a `.env` file (copy `.env.example` → `.env`).
+Output is always written to `cleaned_chapter.zip`.
 
 ---
 
 ## Kaggle Notebook Usage
 
-1. Upload your chapter ZIP as a **Kaggle Dataset**.
-2. Add the dataset to your notebook.
-3. Open `kaggle_run.py` and edit the three config lines at the top of **Cell 2**:
-   ```python
-   INPUT_DATASET = "your-dataset-name"   # Kaggle dataset slug
-   CHAPTER_ZIP   = "chapter.zip"
-   INPAINT_BACKEND = "lama"
-   ```
-4. Paste each `### CELL N ###` section into its own notebook cell.
-5. Run **Cell 1** once to install deps, then restart and run **Cells 2–5**.
+### Typical workflow (dataset auto-unzipped)
 
-> **Resumability**: The manifest at `/kaggle/working/_work/manifest.db` persists across sessions if saved as an output dataset. Re-running the notebook will skip already-completed pages automatically.
+Kaggle automatically unzips your dataset when you add it. The images land at:
+```
+/kaggle/input/<your-dataset-name>/001.png
+/kaggle/input/<your-dataset-name>/002.png
+...
+```
+
+1. Upload your **image files** (or a ZIP of them) as a Kaggle Dataset.
+2. Add the dataset to your notebook.
+3. Open `kaggle_run.py` and edit **Cell 2** — set `INPUT_DATASET` to your dataset slug.
+4. Make sure **OPTION A (folder mode)** is active (it is by default).
+5. Paste each `### CELL N ###` section into its own notebook cell.
+6. Run **Cell 1** once to install deps, restart kernel, then run **Cells 2–5**.
+
+### Alternative: ZIP inside dataset
+
+If you uploaded a `chapter.zip` inside the dataset instead of raw images:
+
+```python
+# In Cell 2 of kaggle_run.py, switch to OPTION B:
+INPUT_FOLDER = None
+INPUT_ZIP    = os.path.join(KAGGLE_INPUT_DIR, INPUT_DATASET, "chapter.zip")
+```
+
+> **Resumability**: The manifest at `/kaggle/working/_work/manifest.db` persists across sessions if saved as an output dataset. Re-running the notebook skips already-completed pages automatically.
 
 ---
 

@@ -55,31 +55,56 @@ import sys
 KAGGLE_INPUT_DIR  = "/kaggle/input"
 KAGGLE_WORKING    = "/kaggle/working"
 
-# ── Edit these three lines ──────────────────────────────────────────────────
-INPUT_DATASET   = "your-dataset-name"   # the Kaggle dataset slug
-CHAPTER_ZIP     = "chapter.zip"         # filename inside the dataset
+# ── Edit these lines ────────────────────────────────────────────────────────
+INPUT_DATASET   = "your-dataset-name"   # Kaggle dataset slug
 INPAINT_BACKEND = "lama"               # "lama" or "mock" (for testing)
 OCR_BACKEND     = "easyocr"
+
+# Input mode — choose ONE of the two options below:
+#
+# OPTION A (recommended for Kaggle): Folder input
+#   When you add a dataset in Kaggle, the files are automatically unzipped
+#   into /kaggle/input/<dataset-name>/.  Point INPUT_FOLDER there directly.
+#   Set INPUT_ZIP = None.
+#
+# OPTION B: ZIP input
+#   When your dataset contains a chapter.zip and you want to keep it zipped.
+#   Set INPUT_FOLDER = None and provide the filename in INPUT_ZIP.
+
+# --- OPTION A: folder (Kaggle auto-unzip) -----------
+CHAPTER_ZIP     = None                  # not used in folder mode
+
+# --- OPTION B: ZIP inside dataset -------------------
+# CHAPTER_ZIP   = "chapter.zip"         # filename inside the dataset
 # ────────────────────────────────────────────────────────────────────────────
 
 # Detect whether we are inside Kaggle
 IS_KAGGLE = os.path.exists(KAGGLE_INPUT_DIR)
 
 if IS_KAGGLE:
-    INPUT_ZIP  = os.path.join(KAGGLE_INPUT_DIR, INPUT_DATASET, CHAPTER_ZIP)
+    # OPTION A — folder (Kaggle auto-unzip, typical case)
+    INPUT_FOLDER = os.path.join(KAGGLE_INPUT_DIR, INPUT_DATASET)
+    INPUT_ZIP    = None
+
+    # OPTION B — ZIP inside the dataset (uncomment to use)
+    # INPUT_FOLDER = None
+    # INPUT_ZIP    = os.path.join(KAGGLE_INPUT_DIR, INPUT_DATASET, CHAPTER_ZIP)
+
     OUTPUT_ZIP = os.path.join(KAGGLE_WORKING, "cleaned_chapter.zip")
     WORK_DIR   = os.path.join(KAGGLE_WORKING, "_work")
     DEBUG_DIR  = os.path.join(KAGGLE_WORKING, "_debug")
 else:
-    # Local development fallback
-    INPUT_ZIP  = "chapter.zip"
-    OUTPUT_ZIP = "cleaned_chapter.zip"
-    WORK_DIR   = "_work"
-    DEBUG_DIR  = "_debug"
+    # Local development fallback — ZIP mode
+    INPUT_FOLDER = None
+    INPUT_ZIP    = "input/chapter.zip"
+    OUTPUT_ZIP   = "cleaned_chapter.zip"
+    WORK_DIR     = "_work"
+    DEBUG_DIR    = "_debug"
 
-print(f"Input  : {INPUT_ZIP}")
-print(f"Output : {OUTPUT_ZIP}")
-print(f"Work   : {WORK_DIR}")
+print(f"Input folder : {INPUT_FOLDER}")
+print(f"Input ZIP    : {INPUT_ZIP}")
+print(f"Output       : {OUTPUT_ZIP}")
+print(f"Work dir     : {WORK_DIR}")
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +128,9 @@ from config.settings import Settings
 from app import run
 
 cfg = Settings(
-    input_zip=INPUT_ZIP,
+    # Input: use folder mode (Kaggle auto-unzip) or ZIP mode — only one needed
+    input_folder=INPUT_FOLDER,   # set to None to use ZIP mode
+    input_zip=INPUT_ZIP,         # set to None to use folder mode
     output_zip=OUTPUT_ZIP,
     work_dir=WORK_DIR,
     debug_dir=DEBUG_DIR,

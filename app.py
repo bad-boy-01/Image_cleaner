@@ -5,7 +5,7 @@ Main entry point for the AI Image Cleaner.
 
 Orchestrates the full pipeline:
   1. Validate configuration
-  2. Extract input ZIP
+  2. Collect input images (from ZIP or folder)
   3. Load OCR + inpainting backends (once)
   4. Process each page sequentially
   5. Resume from manifest if interrupted
@@ -15,11 +15,11 @@ Orchestrates the full pipeline:
 
 Usage
 -----
-    python app.py                          # uses .env / environment defaults
-    python app.py --input chapter1.zip     # override input ZIP
-    python app.py --backend mock           # use mock backend (no GPU)
-    python app.py --no-resume              # reprocess all pages
-    python app.py --debug                  # enable debug artefacts
+    python app.py --input chapter1.zip       # ZIP input
+    python app.py --input /path/to/folder    # Folder input (Kaggle auto-unzip)
+    python app.py --input chapter1.zip --backend mock   # no GPU
+    python app.py --input chapter1.zip --no-resume      # reprocess all
+    python app.py --input chapter1.zip --debug          # save debug artefacts
 """
 
 from __future__ import annotations
@@ -38,14 +38,23 @@ from ocr.registry import ocr_registry
 from state.manifest import Manifest
 from utils import logger
 from utils.metrics import MetricsCollector
-from utils.zip_handler import build_zip, extract_zip
+from utils.zip_handler import build_zip, extract_zip, iter_images
 
 
 def build_settings_from_args(args: argparse.Namespace) -> Settings:
-    """Merge CLI arguments with Settings (env/defaults)."""
+    """Merge CLI arguments with Settings (env/defaults).
+
+    The ``--input`` flag is smart: if the supplied path is a directory
+    it is routed to ``input_folder``; if it ends in ``.zip`` it goes to
+    ``input_zip``.  This means users never need to remember two flags.
+    """
     overrides: dict = {}
     if args.input:
-        overrides["input_zip"] = args.input
+        p = Path(args.input)
+        if p.is_dir():
+            overrides["input_folder"] = p
+        else:
+            overrides["input_zip"] = p
     if args.output:
         overrides["output_zip"] = args.output
     if args.backend:
@@ -59,6 +68,56 @@ def build_settings_from_args(args: argparse.Namespace) -> Settings:
     if args.cpu:
         overrides["gpu_device"] = "cpu"
     return Settings(**overrides)
+
+
+def resolve_input_images(cfg: Settings) -> tuple[list[Path], str]:
+    """
+    Determine the list of image files to process based on the config.
+
+    Supports two modes:
+      - **Folder mode** (``cfg.input_folder`` is set): read images directly
+        from the folder.  Used when Kaggle has already unzipped the dataset.
+      - **ZIP mode** (``cfg.input_zip`` is set): extract the archive to
+        ``cfg.work_dir / "input"`` and return the extracted paths.
+
+    Returns
+    -------
+    tuple[list[Path], str]
+        ``(image_paths, source_description)`` where *source_description* is
+        a human-readable string for the log.
+
+    Raises
+    ------
+    SystemExit
+        If neither input source is configured or the source is missing.
+    """
+    if cfg.input_folder is not None:
+        folder = cfg.input_folder
+        if not folder.exists():
+            logger.error(f"Input folder not found: {folder}")
+            raise SystemExit(2)
+        if not folder.is_dir():
+            logger.error(f"input_folder is not a directory: {folder}")
+            raise SystemExit(2)
+        paths = list(iter_images(folder))
+        return paths, f"folder: {folder}"
+
+    if cfg.input_zip is not None:
+        try:
+            paths = extract_zip(cfg.input_zip, cfg.work_dir / "input")
+        except FileNotFoundError:
+            logger.error(f"Input ZIP not found: {cfg.input_zip}")
+            raise SystemExit(2)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"Failed to extract ZIP: {exc}")
+            raise SystemExit(2)
+        return paths, f"ZIP: {cfg.input_zip}"
+
+    logger.error(
+        "No input source configured. "
+        "Set input_zip or input_folder in .env, or pass --input <path>."
+    )
+    raise SystemExit(2)
 
 
 def run(cfg: Settings) -> int:
@@ -82,17 +141,18 @@ def run(cfg: Settings) -> int:
     debug_saver = DebugSaver(cfg.debug_dir) if cfg.debug_mode else None
 
     # ------------------------------------------------------------------ #
-    # Extract input ZIP
+    # Collect input images (ZIP or folder)
     # ------------------------------------------------------------------ #
-    logger.step(f"Extracting input ZIP: {cfg.input_zip}")
     try:
-        image_paths = extract_zip(cfg.input_zip, cfg.work_dir / "input")
-    except (FileNotFoundError, Exception) as exc:
-        logger.error(f"Failed to extract ZIP: {exc}")
-        return 2
+        image_paths, source_desc = resolve_input_images(cfg)
+    except SystemExit as e:
+        return int(str(e))
+
+    logger.step(f"Input source  : {source_desc}")
+    logger.step(f"Images found  : {len(image_paths)}")
 
     if not image_paths:
-        logger.error("No supported image files found in the input ZIP.")
+        logger.error("No supported image files found in the input source.")
         return 2
 
     logger.pipeline_start(len(image_paths))
@@ -215,7 +275,14 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="image_cleaner",
         description="AI-powered image text removal pipeline.",
     )
-    parser.add_argument("--input", "-i", help="Path to input ZIP archive.")
+    parser.add_argument(
+        "--input", "-i",
+        help=(
+            "Input source: path to a ZIP archive OR a folder containing images. "
+            "Auto-detected: directories → folder mode, .zip files → ZIP mode. "
+            "On Kaggle, pass the dataset folder directly (e.g. /kaggle/input/my-dataset)."
+        ),
+    )
     parser.add_argument("--output", "-o", help="Path for output ZIP archive.")
     parser.add_argument(
         "--backend", "-b",
