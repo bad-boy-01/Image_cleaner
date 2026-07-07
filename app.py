@@ -51,10 +51,10 @@ def build_settings_from_args(args: argparse.Namespace) -> Settings:
     overrides: dict = {}
     if args.input:
         p = Path(args.input)
-        if p.is_dir():
-            overrides["input_folder"] = p
-        else:
+        if p.suffix.lower() == ".zip":
             overrides["input_zip"] = p
+        else:
+            overrides["input_folder"] = p
     if args.output:
         overrides["output_zip"] = args.output
     if args.backend:
