@@ -142,24 +142,30 @@ Kaggle automatically unzips your dataset when you add it. The images land at:
 ...
 ```
 
-1. Upload your **image files** (or a ZIP of them) as a Kaggle Dataset.
-2. Add the dataset to your notebook.
-3. Open `kaggle_run.py` and edit **Cell 2** — set `INPUT_DATASET` to your dataset slug.
-4. Make sure **OPTION A (folder mode)** is active (it is by default).
-5. Paste each `### CELL N ###` section into its own notebook cell.
-6. Run **Cell 1** once to install deps, restart kernel, then run **Cells 2–5**.
+**Step 1 — Clone and install (run once per session):**
+```bash
+!git clone https://github.com/bad-boy-01/Image_cleaner.git
+%cd Image_cleaner
+!python setup.py
+```
 
-### Alternative: ZIP inside dataset
+**Step 2 — Run the cleaner:**
+```bash
+!python app.py --input /kaggle/input/your-dataset-name
+```
+
+That's it. Output ZIP is written to `cleaned_chapter.zip` in the working directory.
+
+### Using a ZIP inside the dataset
 
 If you uploaded a `chapter.zip` inside the dataset instead of raw images:
 
-```python
-# In Cell 2 of kaggle_run.py, switch to OPTION B:
-INPUT_FOLDER = None
-INPUT_ZIP    = os.path.join(KAGGLE_INPUT_DIR, INPUT_DATASET, "chapter.zip")
+```bash
+!python app.py --input /kaggle/input/your-dataset-name/chapter.zip
 ```
 
-> **Resumability**: The manifest at `/kaggle/working/_work/manifest.db` persists across sessions if saved as an output dataset. Re-running the notebook skips already-completed pages automatically.
+> **Resumability**: The manifest at `_work/manifest.db` records completed pages. If the session times out, re-run Step 2 and it picks up where it left off.
+
 
 ---
 

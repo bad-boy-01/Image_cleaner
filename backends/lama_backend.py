@@ -53,9 +53,20 @@ class LamaBackend(InpaintingBackend):
 
     def load_model(self) -> None:
         """Download (if necessary) and load LaMa weights."""
-        from simple_lama_inpainting import SimpleLama  # lazy import
+        try:
+            from simple_lama_inpainting import SimpleLama  # lazy import
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "\n\n"
+                "  'simple-lama-inpainting' is not installed.\n"
+                "  Run the setup script first:\n\n"
+                "    !python setup.py\n\n"
+                "  Or install manually:\n\n"
+                "    !pip install simple-lama-inpainting\n"
+            ) from None
 
         self._model = SimpleLama(device=self.device)
+
 
     def unload_model(self) -> None:
         """Delete the model and free GPU memory."""
