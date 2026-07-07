@@ -139,6 +139,17 @@ cfg = Settings(
     ocr_backend=OCR_BACKEND,
     # GPU is always cuda in Kaggle; switch to "cpu" for testing
     gpu_device="cuda" if IS_KAGGLE else "cpu",
+
+    # --- Quality Tuning ---
+    # Give LaMa more surrounding context to reconstruct lines instead of cloning.
+    patch_padding=128,
+    # Expand masks slightly to ensure text fringes are completely covered.
+    mask_expansion_px=8,
+    # Lower confidence threshold to catch highly stylized text (default was 0.5)
+    confidence_threshold=0.4,
+    # Set to True if you also want English text/sound effects removed
+    remove_english=False,
+
     # Set to True to save debug artefacts for mask inspection
     debug_mode=False,
     # Set to False to reprocess all pages from scratch

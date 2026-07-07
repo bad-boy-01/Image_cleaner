@@ -71,20 +71,17 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     ocr_backend: Literal["easyocr", "paddleocr"] = Field(
         default="easyocr",
-        description="OCR backend to use for text detection.",
+        description="Text detection backend.",
     )
     ocr_languages: List[str] = Field(
         default=["ko", "ja", "ch_sim", "en"],
-        description=(
-            "Language codes passed to the OCR backend. "
-            "English must be included so detections can be filtered out."
-        ),
+        description="Languages to scan for.",
     )
     confidence_threshold: float = Field(
-        default=0.5,
+        default=0.4,
         ge=0.0,
         le=1.0,
-        description="Minimum OCR confidence to keep a detection.",
+        description="Discard OCR detections below this confidence score.",
     )
 
     # ------------------------------------------------------------------ #
@@ -109,7 +106,7 @@ class Settings(BaseSettings):
     # Masking
     # ------------------------------------------------------------------ #
     mask_expansion_px: int = Field(
-        default=4,
+        default=8,
         ge=0,
         le=50,
         description="Morphological dilation radius applied to raw OCR masks (pixels).",
@@ -119,9 +116,9 @@ class Settings(BaseSettings):
     # Patch extraction
     # ------------------------------------------------------------------ #
     patch_padding: int = Field(
-        default=32,
+        default=128,
         ge=0,
-        le=256,
+        le=512,
         description="Extra padding added around each mask bounding box before cropping.",
     )
     patch_align: int = Field(
