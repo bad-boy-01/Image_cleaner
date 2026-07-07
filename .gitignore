@@ -1,0 +1,31 @@
+# Runtime scratch directories (auto-created by the pipeline)
+_work/
+_debug/
+
+# Keep the input folder but ignore ZIP files committed by accident
+input/*.zip
+input/*.ZIP
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Env files (may contain paths/secrets)
+.env
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
