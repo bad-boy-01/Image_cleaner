@@ -184,6 +184,7 @@ class EasyOCRBackend(OCRBackend):
 def _dominant_script(text: str) -> str:
     """
     Determine the dominant Unicode script in *text* by character count.
+    Ignores whitespace, punctuation, and numbers so they don't skew the result.
 
     Returns one of: "Hangul", "Hiragana", "Katakana", "CJK", "Latin", "Other".
     """
@@ -192,6 +193,10 @@ def _dominant_script(text: str) -> str:
         "CJK": 0, "Latin": 0, "Other": 0,
     }
     for ch in text:
+        # Skip numbers, spaces, and punctuation
+        if not ch.isalpha():
+            continue
+
         cp = ord(ch)
         if 0xAC00 <= cp <= 0xD7A3 or 0x1100 <= cp <= 0x11FF or 0xA960 <= cp <= 0xA97F:
             counts["Hangul"] += 1
@@ -202,17 +207,22 @@ def _dominant_script(text: str) -> str:
         elif (0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF
               or 0x20000 <= cp <= 0x2A6DF or 0xF900 <= cp <= 0xFAFF):
             counts["CJK"] += 1
-        elif ch.isalpha():
+        else:
             try:
                 name = unicodedata.name(ch, "")
-                counts["Latin"] += 1 if name.startswith("LATIN") else 1  # count as Latin if alpha
+                if name.startswith("LATIN"):
+                    counts["Latin"] += 1
+                else:
+                    counts["Other"] += 1
             except Exception:
                 counts["Other"] += 1
-        else:
-            counts["Other"] += 1
+
+    # If the text was purely numbers/punctuation, fallback to Other
+    if sum(counts.values()) == 0:
+        return "Other"
 
     dominant = max(counts, key=lambda k: counts[k])
-    return dominant if counts[dominant] > 0 else "Other"
+    return dominant
 
 
 def _script_to_language(script: str) -> str:
